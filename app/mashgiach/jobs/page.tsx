@@ -91,6 +91,16 @@ export default function JobsPage() {
     return `${first} ${lastInitial}`.trim()
   }
 
+  function formatPay(pay: string | null) {
+    if (!pay) return null
+
+    const str = String(pay).trim()
+    if (!str) return null
+    if (str.includes('$')) return str
+
+    return `$${str}/hr`
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <h1 className="text-2xl font-bold text-gray-900">Job Directory</h1>
@@ -126,7 +136,9 @@ export default function JobsPage() {
 
                       <p className="mt-1 text-sm text-gray-600">
                         {job.city} • {job.job_type}
-                        {job.pay_rate ? ` • ${job.pay_rate}` : ''}
+                        {formatPay(job.pay_rate)
+                          ? ` • ${formatPay(job.pay_rate)}`
+                          : ''}
                       </p>
 
                       <p className="mt-1 text-xs text-gray-500">

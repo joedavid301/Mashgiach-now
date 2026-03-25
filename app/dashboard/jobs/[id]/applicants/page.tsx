@@ -113,26 +113,29 @@ export default function JobApplicantsPage() {
   }, [jobId, router])
 
   if (loading) {
-    return <div className="p-6">Loading applicants...</div>
+    return <div className="p-6 text-sm text-gray-600">Loading applicants...</div>
   }
 
   if (error) {
-    return <div className="p-6 text-red-600">{error}</div>
+    return <div className="p-6 text-sm text-red-600">{error}</div>
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-5xl p-6">
       <div className="mb-6">
         <Link
           href="/dashboard/jobs"
-          className="mb-3 inline-block text-sm text-gray-600 hover:text-black"
+          className="text-sm text-gray-600 hover:text-black"
         >
           ← Back to Jobs
         </Link>
 
-        <h1 className="text-3xl font-bold text-gray-900">Applicants</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          {jobTitle ? `Applicants for ${jobTitle}` : 'View applicants for this job.'}
+        <h1 className="mt-3 text-2xl font-bold text-gray-900">Applicants</h1>
+
+        <p className="mt-1 text-sm text-gray-600">
+          {jobTitle
+            ? `Applicants for ${jobTitle}`
+            : 'Review applicants for this job'}
         </p>
       </div>
 
@@ -141,38 +144,53 @@ export default function JobApplicantsPage() {
           <p className="text-sm text-gray-600">No applicants yet.</p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
           {applications.map((application) => {
             const profile = profiles[application.mashgiach_user_id]
 
             return (
-              <Link
+              <div
                 key={application.id}
-                href={`/mashgiach/${application.mashgiach_user_id}`}
-                className="rounded-2xl border bg-white p-6 shadow-sm hover:bg-gray-50"
+                className="rounded-2xl border bg-white p-5 shadow-sm"
               >
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {profile
-                    ? `${profile.first_name} ${profile.last_name}`
-                    : 'Unknown Applicant'}
-                </h2>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {profile
+                        ? `${profile.first_name} ${profile.last_name}`
+                        : 'Unknown Applicant'}
+                    </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
-                  {profile?.city || 'City not available'}
-                </p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {profile?.city || 'City not available'}
+                    </p>
 
-                <p className="mt-3 text-sm text-gray-700">
-                  Phone: {profile?.phone || 'Not available'}
-                </p>
+                    {profile?.phone && (
+                      <p className="mt-1 text-sm text-gray-700">
+                        {profile.phone}
+                      </p>
+                    )}
 
-                <p className="mt-3 text-xs text-gray-500">
-                  Status: {application.status}
-                </p>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Applied on{' '}
+                      {new Date(application.created_at).toLocaleDateString()}
+                    </p>
 
-                <p className="mt-1 text-xs text-gray-400">
-                  Applied on {new Date(application.created_at).toLocaleDateString()}
-                </p>
-              </Link>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Status: {application.status}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/directory/${application.mashgiach_user_id}`}
+                      className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
+                    >
+                      View Profile
+                    </Link>
+                  </div>
+                </div>
+              </div>
             )
           })}
         </div>

@@ -54,8 +54,19 @@ export default function BusinessJobsPage() {
     loadJobs()
   }, [])
 
+  function formatPay(pay: string | null) {
+    if (!pay) return null
+
+    const str = String(pay).trim()
+    if (!str) return null
+    if (str.includes('$')) return str
+
+    return `$${str}/hr`
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-6">
+      {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Job Posts</h1>
@@ -72,6 +83,7 @@ export default function BusinessJobsPage() {
         </Link>
       </div>
 
+      {/* Table */}
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
           <div className="p-6 text-sm text-gray-600">Loading jobs...</div>
@@ -86,19 +98,26 @@ export default function BusinessJobsPage() {
             {jobs.map((job) => (
               <div key={job.id} className="p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  {/* Left */}
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">
                       {job.title}
                     </h2>
+
                     <p className="mt-1 text-sm text-gray-600">
                       {job.city} • {job.job_type}
-                      {job.pay_rate ? ` • ${job.pay_rate}` : ''}
+                      {formatPay(job.pay_rate)
+                        ? ` • ${formatPay(job.pay_rate)}`
+                        : ''}
                     </p>
+
                     <p className="mt-2 text-xs text-gray-500">
-                      {job.is_active ? 'Active' : 'Inactive'}
+                      {job.is_active ? 'Active' : 'Inactive'} •{' '}
+                      {new Date(job.created_at).toLocaleDateString()}
                     </p>
                   </div>
 
+                  {/* Right */}
                   <div className="flex gap-2">
                     <Link
                       href={`/dashboard/jobs/${job.id}/edit`}

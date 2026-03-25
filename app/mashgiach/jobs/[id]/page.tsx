@@ -8,90 +8,99 @@ import { supabase } from '@/app/lib/supabase'
 type Job = {
   id: string
   title: string
+  description: string | null
   city: string
   job_type: string
   pay_rate: string | null
-  description: string
-  requirements: string | null
+  created_at: string
   vegetable_checking_required: boolean
   food_safety_required: boolean
   agency_required: boolean
   agency_name: string | null
   business_user_id: string
-  created_at: string
   is_active: boolean
 }
 
-type Profile = {
+type BusinessProfile = {
   user_id: string
-  contact_name: string
+  contact_name: string | null
 }
 
-export default function JobDetailPage() {
+export default function MashgiachJobDetailPage() {
   const params = useParams()
   const jobId = params.id as string
 
   const [job, setJob] = useState<Job | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)
+  const [alreadyApplied, setAlreadyApplied] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const [applying, setApplying] = useState(false)
-  const [applyMessage, setApplyMessage] = useState<string | null>(null)
-  const [hasApplied, setHasApplied] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadJob() {
-      if (!jobId) return
-
       setLoading(true)
       setError(null)
-      setApplyMessage(null)
+      setSuccessMessage(null)
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
-        .select('*')
+        .select(`
+          id,
+          title,
+          description,
+          city,
+          job_type,
+          pay_rate,
+          created_at,
+          vegetable_checking_required,
+          food_safety_required,
+          agency_required,
+          agency_name,
+          business_user_id,
+          is_active
+        `)
         .eq('id', jobId)
         .single()
 
-      if (jobError || !jobData) {
-        setError('Job not found.')
+      if (jobError) {
+        setError(jobError.message)
         setLoading(false)
         return
       }
 
-      if (!jobData.is_active) {
-        setError('This job is no longer active.')
+      if (!jobData) {
+        setError('Job not found.')
         setLoading(false)
         return
       }
 
       setJob(jobData)
 
-      // ✅ FIXED HERE
-      const { data: profileData } = await supabase
+      const { data: businessData } = await supabase
         .from('business_profiles')
         .select('user_id, contact_name')
         .eq('user_id', jobData.business_user_id)
-        .single()
+        .maybeSingle()
 
-      if (profileData) {
-        setProfile(profileData)
+      if (businessData) {
+        setBusinessProfile(businessData)
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
       if (user) {
-        const { data: applicationRow } = await supabase
+        const { data: applicationData } = await supabase
           .from('job_applications')
           .select('id')
-          .eq('job_id', jobData.id)
+          .eq('job_id', jobId)
           .eq('mashgiach_user_id', user.id)
           .maybeSingle()
 
-        setHasApplied(!!applicationRow)
+        setAlreadyApplied(!!applicationData)
       }
 
       setLoading(false)
@@ -100,143 +109,165 @@ export default function JobDetailPage() {
     loadJob()
   }, [jobId])
 
-  function formatName(profile: Profile | null) {
-    if (!profile?.contact_name) return 'Unknown'
-
-    const parts = profile.contact_name.trim().split(' ')
-    const first = parts[0]
-    const lastInitial = parts.length > 1 ? `${parts[1][0]}.` : ''
-
-    return `${first} ${lastInitial}`.trim()
-  }
-
   async function handleApply() {
-    setApplying(true)
-    setApplyMessage(null)
+    if (!job) return
+
+    setSubmitting(true)
+    setError(null)
+    setSuccessMessage(null)
 
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
     if (!user) {
-      setApplyMessage('You must be logged in as a mashgiach to apply.')
-      setApplying(false)
+      setError('You must be logged in to apply.')
+      setSubmitting(false)
       return
     }
 
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (!userRow || userRow.role !== 'mashgiach') {
-      setApplyMessage('Only mashgichim can apply to jobs.')
-      setApplying(false)
-      return
-    }
-
-    if (!job) {
-      setApplyMessage('Job not found.')
-      setApplying(false)
-      return
-    }
-
-    const { error } = await supabase.from('job_applications').insert({
+    const { error: insertError } = await supabase.from('job_applications').insert({
       job_id: job.id,
       mashgiach_user_id: user.id,
+      status: 'applied',
     })
 
-    if (error) {
-      if (
-        error.message.toLowerCase().includes('duplicate') ||
-        error.message.toLowerCase().includes('unique')
-      ) {
-        setApplyMessage('You already applied to this job.')
-        setHasApplied(true)
-      } else {
-        setApplyMessage(error.message)
-      }
-      setApplying(false)
+    if (insertError) {
+      setError(insertError.message)
+      setSubmitting(false)
       return
     }
 
-    setHasApplied(true)
-    setApplyMessage('Application submitted successfully.')
-    setApplying(false)
+    setAlreadyApplied(true)
+    setSuccessMessage('Application submitted successfully.')
+    setSubmitting(false)
+  }
+
+  function formatContactName(name?: string | null) {
+    if (!name) return 'Unknown'
+
+    const parts = name.trim().split(' ').filter(Boolean)
+    if (parts.length === 0) return 'Unknown'
+
+    const first = parts[0]
+    const lastInitial = parts.length > 1 ? `${parts[1][0]}.` : ''
+
+    return `${first} ${lastInitial}`.trim()
+  }
+
+  function formatPay(pay: string | null) {
+    if (!pay) return null
+
+    const str = String(pay).trim()
+    if (!str) return null
+    if (str.includes('$')) return str
+
+    return `$${str}/hr`
   }
 
   if (loading) {
-    return <div className="p-6">Loading job...</div>
+    return <div className="mx-auto max-w-3xl p-6 text-sm text-gray-600">Loading job...</div>
   }
 
-  if (error || !job) {
-    return (
-      <div className="p-6">
-        <p className="text-red-600">{error}</p>
-        <Link href="/mashgiach/jobs">Back to Job Directory</Link>
-      </div>
-    )
+  if (error && !job) {
+    return <div className="mx-auto max-w-3xl p-6 text-sm text-red-600">{error}</div>
+  }
+
+  if (!job) {
+    return <div className="mx-auto max-w-3xl p-6 text-sm text-gray-600">Job not found.</div>
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <Link href="/mashgiach/jobs" className="mb-4 inline-block text-sm text-gray-600">
-        ← Back to Job Directory
+    <div className="mx-auto max-w-3xl p-6">
+      <Link
+        href="/mashgiach/jobs"
+        className="mb-6 inline-block text-sm text-gray-600 hover:text-black"
+      >
+        ← Back to Jobs
       </Link>
 
       <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{job.title}</h1>
 
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-gray-600">
               {job.city} • {job.job_type}
-              {job.pay_rate ? ` • ${job.pay_rate}` : ''}
             </p>
 
+            {formatPay(job.pay_rate) && (
+              <p className="mt-1 text-sm text-gray-700">
+                Pay: {formatPay(job.pay_rate)}
+              </p>
+            )}
+
             <p className="mt-1 text-xs text-gray-500">
-              Posted by {formatName(profile)} •{' '}
+              Posted by {formatContactName(businessProfile?.contact_name)} ·{' '}
               {new Date(job.created_at).toLocaleDateString()}
             </p>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={handleApply}
-              disabled={applying || hasApplied}
-              className="rounded-xl bg-black px-5 py-3 text-white disabled:opacity-60"
-            >
-              {hasApplied ? 'Applied' : applying ? 'Applying...' : 'Apply Now'}
-            </button>
-
-            {applyMessage && (
-              <p className="text-sm text-gray-600">{applyMessage}</p>
+          <div>
+            {alreadyApplied ? (
+              <span className="inline-block rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700">
+                Applied
+              </span>
+            ) : (
+              <button
+                onClick={handleApply}
+                disabled={submitting || !job.is_active}
+                className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? 'Applying...' : 'Apply Now'}
+              </button>
             )}
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {job.vegetable_checking_required && <span>Vegetable Checking Required</span>}
-          {job.food_safety_required && <span>Food Safety Required</span>}
-          {job.agency_required && job.agency_name && <span>{job.agency_name}</span>}
-        </div>
+        {successMessage && (
+          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+            {successMessage}
+          </div>
+        )}
 
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold">Job Description</h2>
-          <p className="mt-3 whitespace-pre-line text-sm text-gray-700">
-            {job.description}
-          </p>
-        </div>
+        {error && job && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
-        {job.requirements && (
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold">Additional Requirements</h2>
-            <p className="mt-3 whitespace-pre-line text-sm text-gray-700">
-              {job.requirements}
+        {job.description && (
+          <div className="mt-6">
+            <h2 className="text-sm font-semibold">Job Description</h2>
+            <p className="mt-2 whitespace-pre-line text-sm text-gray-700">
+              {job.description}
             </p>
           </div>
         )}
+
+        <div className="mt-6">
+          <h2 className="text-sm font-semibold">Requirements</h2>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {job.vegetable_checking_required && (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                Vegetable Checking Required
+              </span>
+            )}
+
+            {job.food_safety_required && (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                Food Safety Required
+              </span>
+            )}
+
+            {job.agency_required && (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                Agency: {job.agency_name || 'Required'}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
