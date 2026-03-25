@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import Navbar from '@/app/components/Navbar'
 
 type MashgiachProfile = {
   user_id: string
@@ -36,7 +35,6 @@ export default function UnlockedProfilesPage() {
         return
       }
 
-      // Load business profile
       const { data: businessProfile, error: businessError } = await supabase
         .from('business_profiles')
         .select('subscription_status, monthly_unlock_limit, unlocks_used_this_month')
@@ -57,7 +55,6 @@ export default function UnlockedProfilesPage() {
       setUsed(usedCount)
       setRemaining(limit - usedCount)
 
-      // Load unlocks
       const { data: unlockRows, error: unlockError } = await supabase
         .from('profile_unlocks')
         .select('mashgiach_user_id, created_at')
@@ -106,57 +103,51 @@ export default function UnlockedProfilesPage() {
   if (error) return <div className="p-6">{error}</div>
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto max-w-5xl">
-        <Navbar />
+    <div>
+      <h1 className="mb-6 text-3xl font-bold text-gray-900">
+        Unlocked Profiles
+      </h1>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">
-          Unlocked Profiles
-        </h1>
-
-        {/* STATS */}
-        <div className="mb-8 rounded-2xl border bg-white p-5 shadow-sm grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Subscription</p>
-            <p className="text-xl font-semibold">{subscriptionStatus}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Remaining</p>
-            <p className="text-xl font-semibold">{remaining}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Used</p>
-            <p className="text-xl font-semibold">{used}</p>
-          </div>
+      <div className="mb-8 grid grid-cols-3 gap-4 rounded-2xl border bg-white p-5 shadow-sm">
+        <div>
+          <p className="text-sm text-gray-500">Subscription</p>
+          <p className="text-xl font-semibold">{subscriptionStatus}</p>
         </div>
 
-        {/* PROFILES */}
-        {profiles.length ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {profiles.map((profile) => (
-              <Link
-                key={profile.user_id}
-                href={`/mashgiach/${profile.user_id}`}
-                className="rounded-2xl border bg-white p-6 shadow-sm hover:bg-gray-50"
-              >
-                <h2 className="text-xl font-semibold">
-                  {profile.first_name} {profile.last_name}
-                </h2>
-                <p className="text-sm text-gray-600">{profile.city}</p>
-                <p className="mt-4 text-sm">
-                  Phone: {profile.phone || 'Not available'}
-                </p>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border bg-white p-6 text-gray-600 shadow-sm">
-            No unlocked profiles yet.
-          </div>
-        )}
+        <div>
+          <p className="text-sm text-gray-500">Remaining</p>
+          <p className="text-xl font-semibold">{remaining}</p>
+        </div>
+
+        <div>
+          <p className="text-sm text-gray-500">Used</p>
+          <p className="text-xl font-semibold">{used}</p>
+        </div>
       </div>
+
+      {profiles.length ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {profiles.map((profile) => (
+            <Link
+              key={profile.user_id}
+              href={`/mashgiach/${profile.user_id}`}
+              className="rounded-2xl border bg-white p-6 shadow-sm hover:bg-gray-50"
+            >
+              <h2 className="text-xl font-semibold">
+                {profile.first_name} {profile.last_name}
+              </h2>
+              <p className="text-sm text-gray-600">{profile.city}</p>
+              <p className="mt-4 text-sm">
+                Phone: {profile.phone || 'Not available'}
+              </p>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border bg-white p-6 text-gray-600 shadow-sm">
+          No unlocked profiles yet.
+        </div>
+      )}
     </div>
   )
 }

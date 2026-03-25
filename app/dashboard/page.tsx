@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import Navbar from '@/app/components/Navbar'
 
 type MashgiachProfile = {
   user_id: string
   first_name: string
   last_name: string
   city: string
+  profile_photo_url: string | null
 }
 
 export default function DashboardPage() {
@@ -31,33 +31,42 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser()
 
       if (!user) {
-        router.push('/login')
+        router.replace('/login')
         return
       }
 
-      // role check
       const { data: userRow } = await supabase
         .from('users')
         .select('role')
         .eq('id', user.id)
         .maybeSingle()
 
-      if (!userRow || userRow.role !== 'business') {
-        setError('Access denied. Business account required.')
+      if (!userRow) {
+        setError('User not found.')
         setLoading(false)
         return
       }
 
-      // business profile (NEW SYSTEM)
-      const { data: profile, error: profileError } = await supabase
+      if (userRow.role === 'mashgiach') {
+        router.replace('/mashgiach/dashboard')
+        return
+      }
+
+      if (userRow.role !== 'business') {
+        setError('Access denied.')
+        setLoading(false)
+        return
+      }
+
+      const { data: profile } = await supabase
         .from('business_profiles')
         .select(
-          'business_name, subscription_status, monthly_unlock_limit, unlocks_used_this_month'
+          'business_name, monthly_unlock_limit, unlocks_used_this_month'
         )
         .eq('user_id', user.id)
         .maybeSingle()
 
-      if (profileError || !profile) {
+      if (!profile) {
         setError('Business profile not found.')
         setLoading(false)
         return
@@ -71,7 +80,6 @@ export default function DashboardPage() {
       setUsed(usedCount)
       setRemaining(limit - usedCount)
 
-      // total unlock count
       const { count } = await supabase
         .from('profile_unlocks')
         .select('*', { count: 'exact', head: true })
@@ -79,12 +87,10 @@ export default function DashboardPage() {
 
       setUnlockCount(count || 0)
 
-      // recent unlocks
       const { data: unlockRows } = await supabase
         .from('profile_unlocks')
-        .select('mashgiach_user_id, created_at')
+        .select('mashgiach_user_id')
         .eq('business_user_id', user.id)
-        .order('created_at', { ascending: false })
         .limit(5)
 
       if (unlockRows && unlockRows.length > 0) {
@@ -92,18 +98,12 @@ export default function DashboardPage() {
 
         const { data: profiles } = await supabase
           .from('mashgiach_profiles')
-          .select('user_id, first_name, last_name, city')
+          .select(
+            'user_id, first_name, last_name, city, profile_photo_url'
+          )
           .in('user_id', ids)
 
-        const map = new Map(
-          (profiles || []).map((p: MashgiachProfile) => [p.user_id, p])
-        )
-
-        const ordered = ids
-          .map((id) => map.get(id))
-          .filter(Boolean) as MashgiachProfile[]
-
-        setRecentProfiles(ordered)
+        setRecentProfiles((profiles as MashgiachProfile[]) || [])
       }
 
       setLoading(false)
@@ -116,71 +116,95 @@ export default function DashboardPage() {
   if (error) return <div className="p-6">{error}</div>
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto max-w-7xl">
+    <div>
+      <h1 className="mb-6 text-3xl font-bold">{businessName}</h1>
 
-        <Navbar />
-
-        <h1 className="mb-6 text-3xl font-bold">
-          {businessName}
-        </h1>
-
-        {/* STATS */}
-        <div className="mb-10 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white p-6 shadow">
-            <p className="text-sm text-gray-500">Unlocks Remaining</p>
-            <p className="text-3xl font-bold">{remaining}</p>
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 shadow">
-            <p className="text-sm text-gray-500">Used This Month</p>
-            <p className="text-3xl font-bold">{used}</p>
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 shadow">
-            <p className="text-sm text-gray-500">Total Unlocks</p>
-            <p className="text-3xl font-bold">{unlockCount}</p>
-          </div>
+      <div className="mb-10 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl bg-white p-6 shadow">
+          <p className="text-sm text-gray-500">Unlocks Remaining</p>
+          <p className="text-3xl font-bold">{remaining}</p>
         </div>
 
-        {/* ACTIONS */}
-        <div className="mb-10">
-          <h2 className="mb-4 text-xl font-semibold">Quick Actions</h2>
+        <div className="rounded-2xl bg-white p-6 shadow">
+          <p className="text-sm text-gray-500">Used This Month</p>
+          <p className="text-3xl font-bold">{used}</p>
+        </div>
 
-          <div className="flex flex-wrap gap-4">
-            <Link href="/directory" className="rounded-xl bg-black px-5 py-3 text-white">
-              Browse Mashgiachim
-            </Link>
+        <div className="rounded-2xl bg-white p-6 shadow">
+          <p className="text-sm text-gray-500">Total Unlocks</p>
+          <p className="text-3xl font-bold">{unlockCount}</p>
+        </div>
+      </div>
 
-            <Link href="/dashboard/unlocked" className="rounded-xl border px-5 py-3">
-              View Unlocked Profiles
-            </Link>
+      <div className="mb-10">
+        <h2 className="mb-4 text-xl font-semibold">Quick Actions</h2>
+
+        <div className="flex flex-wrap gap-4">
+          <Link
+            href="/directory"
+            className="rounded-xl bg-black px-5 py-3 text-white"
+          >
+            Browse Mashgiachim
+          </Link>
+
+          <Link
+            href="/dashboard/unlocked"
+            className="rounded-xl border px-5 py-3"
+          >
+            View Unlocked Profiles
+          </Link>
+
+          <Link
+            href="/dashboard/jobs"
+            className="rounded-xl border px-5 py-3"
+          >
+            Manage Jobs
+          </Link>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-4 text-xl font-semibold">
+          Recently Unlocked Mashgiachim
+        </h2>
+
+        {recentProfiles.length ? (
+          <div className="space-y-3">
+            {recentProfiles.map((profile) => (
+              <Link
+                key={profile.user_id}
+                href={`/mashgiach/${profile.user_id}`}
+                className="block rounded-xl border bg-white p-4 hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 overflow-hidden rounded-full border bg-gray-100">
+                    {profile.profile_photo_url ? (
+                      <img
+                        src={profile.profile_photo_url}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                        No photo
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      {profile.first_name} {profile.last_name}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {profile.city}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
-        </div>
-
-        {/* RECENT */}
-        <div>
-          <h2 className="mb-4 text-xl font-semibold">
-            Recently Unlocked Mashgiachim
-          </h2>
-
-          {recentProfiles.length ? (
-            <div className="space-y-3">
-              {recentProfiles.map((profile) => (
-                <Link
-                  key={profile.user_id}
-                  href={`/mashgiach/${profile.user_id}`}
-                  className="block rounded-xl border bg-white p-4 hover:bg-gray-50"
-                >
-                  {profile.first_name} {profile.last_name} — {profile.city}
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No profiles unlocked yet</p>
-          )}
-        </div>
-
+        ) : (
+          <p className="text-gray-500">No profiles unlocked yet</p>
+        )}
       </div>
     </div>
   )

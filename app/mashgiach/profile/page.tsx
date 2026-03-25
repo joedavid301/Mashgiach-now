@@ -212,6 +212,19 @@ export default function MashgiachProfilePage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    const maxSize = 2 * 1024 * 1024 // 2MB
+
+    if (!allowedTypes.includes(file.type)) {
+      setMessage('Please upload a JPG, PNG, or WebP image.')
+      return
+    }
+
+    if (file.size > maxSize) {
+      setMessage('Profile photo must be 2MB or smaller.')
+      return
+    }
+
     setUploadingPhoto(true)
     setMessage(null)
 
@@ -225,8 +238,14 @@ export default function MashgiachProfilePage() {
       return
     }
 
-    const fileExt = file.name.split('.').pop()
-    const filePath = `${user.id}/${Date.now()}.${fileExt}`
+    const fileExt =
+      file.type === 'image/png'
+        ? 'png'
+        : file.type === 'image/webp'
+        ? 'webp'
+        : 'jpg'
+
+    const filePath = `${user.id}/profile.${fileExt}`
 
     const { error: uploadError } = await supabase.storage
       .from('profile-photos')
@@ -235,9 +254,7 @@ export default function MashgiachProfilePage() {
       })
 
     if (uploadError) {
-      setMessage(
-        `Photo upload failed. Make sure the "profile-photos" bucket exists. ${uploadError.message}`
-      )
+      setMessage(`Photo upload failed. ${uploadError.message}`)
       setUploadingPhoto(false)
       return
     }
@@ -246,7 +263,7 @@ export default function MashgiachProfilePage() {
       .from('profile-photos')
       .getPublicUrl(filePath)
 
-    setProfilePhotoUrl(publicUrlData.publicUrl)
+    setProfilePhotoUrl(`${publicUrlData.publicUrl}?t=${Date.now()}`)
     setUploadingPhoto(false)
     setMessage('Photo uploaded. Save profile to keep it.')
   }
@@ -358,28 +375,47 @@ export default function MashgiachProfilePage() {
                 Profile Photo (optional)
               </label>
 
-              {profilePhotoUrl ? (
-                <img
-                  src={profilePhotoUrl}
-                  alt="Profile"
-                  className="mb-3 h-24 w-24 rounded-full border object-cover"
-                />
-              ) : (
-                <div className="mb-3 flex h-24 w-24 items-center justify-center rounded-full border bg-gray-100 text-sm text-gray-500">
-                  No photo
+              <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="h-24 w-24 overflow-hidden rounded-full border bg-gray-100">
+                  {profilePhotoUrl ? (
+                    <img
+                      src={profilePhotoUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                      No photo
+                    </div>
+                  )}
                 </div>
-              )}
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="block w-full text-sm"
-              />
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="photo-upload"
+                    className={`inline-flex cursor-pointer items-center justify-center rounded-xl px-4 py-3 text-sm font-medium text-white transition ${
+                      uploadingPhoto
+                        ? 'cursor-not-allowed bg-gray-400'
+                        : 'bg-black hover:bg-gray-800 active:scale-[0.98]'
+                    }`}
+                  >
+                    {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                  </label>
 
-              {uploadingPhoto && (
-                <p className="mt-2 text-sm text-gray-500">Uploading photo...</p>
-              )}
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePhotoUpload}
+                    disabled={uploadingPhoto}
+                    className="hidden"
+                  />
+
+                  <p className="text-xs text-gray-500">
+                    JPG, PNG, or WebP. Max 2MB.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -704,7 +740,11 @@ export default function MashgiachProfilePage() {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-xl bg-black px-6 py-3 font-medium text-white disabled:opacity-50"
+            className={`rounded-xl px-6 py-3 font-medium text-white transition ${
+              saving
+                ? 'cursor-not-allowed bg-gray-400'
+                : 'bg-black hover:bg-gray-800 active:scale-[0.98]'
+            }`}
           >
             {saving ? 'Saving...' : 'Save Profile'}
           </button>
