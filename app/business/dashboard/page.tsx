@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 
 type MashgiachProfile = {
   user_id: string
@@ -148,14 +148,14 @@ export default function DashboardPage() {
           </Link>
 
           <Link
-            href="/dashboard/unlocked"
+            href="/business/unlocked"
             className="rounded-xl border px-5 py-3"
           >
             View Unlocked Profiles
           </Link>
 
           <Link
-            href="/dashboard/jobs"
+            href="/business/jobs"
             className="rounded-xl border px-5 py-3"
           >
             Manage Jobs

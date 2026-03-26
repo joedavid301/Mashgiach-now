@@ -43,7 +43,6 @@ export default function DirectoryPage() {
       if (user) {
         setUserId(user.id)
 
-        // business profile
         const { data: bp } = await supabase
           .from('business_profiles')
           .select('subscription_status, monthly_unlock_limit, unlocks_used_this_month')
@@ -56,19 +55,17 @@ export default function DirectoryPage() {
           const limit = bp.monthly_unlock_limit ?? 20
           const used = bp.unlocks_used_this_month ?? 0
 
-          setRemaining(limit - used)
+          setRemaining(Math.max(limit - used, 0))
         }
 
-        // unlocked ids
         const { data: unlocks } = await supabase
           .from('profile_unlocks')
           .select('mashgiach_user_id')
           .eq('business_user_id', user.id)
 
-        setUnlockedIds((unlocks || []).map((u: any) => u.mashgiach_user_id))
+        setUnlockedIds((unlocks || []).map((u: { mashgiach_user_id: string }) => u.mashgiach_user_id))
       }
 
-      // profiles
       const { data: profileRows } = await supabase
         .from('mashgiach_profiles')
         .select('*')
@@ -97,11 +94,23 @@ export default function DirectoryPage() {
     setUnlockingId(mashgiachUserId)
 
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        alert('Your session expired. Please log in again.')
+        return
+      }
+
       const res = await fetch('/api/unlocks/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
-          businessUserId: userId,
           mashgiachUserId,
         }),
       })
@@ -113,15 +122,13 @@ export default function DirectoryPage() {
         return
       }
 
-      // already unlocked
-      if (data.alreadyUnlocked) {
-        setUnlockedIds((prev) => [...prev, mashgiachUserId])
-        return
-      }
+      setUnlockedIds((prev) =>
+        prev.includes(mashgiachUserId) ? prev : [...prev, mashgiachUserId]
+      )
 
-      // success
-      setUnlockedIds((prev) => [...prev, mashgiachUserId])
-      setRemaining(data.unlocksRemaining)
+      if (typeof data.unlocksRemaining === 'number') {
+        setRemaining(data.unlocksRemaining)
+      }
     } catch (err) {
       console.error(err)
       alert('Unlock failed')
@@ -135,13 +142,11 @@ export default function DirectoryPage() {
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-10">
       <div className="mx-auto max-w-6xl">
-
         <Navbar />
 
-        <h1 className="text-3xl font-bold mb-6">Mashgiach Directory</h1>
+        <h1 className="mb-6 text-3xl font-bold">Mashgiach Directory</h1>
 
-        {/* STATUS BAR */}
-        <div className="mb-6 rounded-xl bg-white border p-4 text-sm text-gray-600">
+        <div className="mb-6 rounded-xl border bg-white p-4 text-sm text-gray-600">
           {subscriptionStatus === 'active' ? (
             <>You have {remaining} unlocks remaining this month</>
           ) : (
@@ -157,8 +162,10 @@ export default function DirectoryPage() {
               profile.vegetable_check_certified ?? profile.can_check_vegetables
 
             return (
-              <div key={profile.user_id} className="rounded-2xl border bg-white p-6 shadow-sm">
-
+              <div
+                key={profile.user_id}
+                className="rounded-2xl border bg-white p-6 shadow-sm"
+              >
                 <h2 className="text-xl font-semibold">
                   {profile.first_name}{' '}
                   {isUnlocked
@@ -169,25 +176,45 @@ export default function DirectoryPage() {
                 <p className="text-gray-600">{profile.city}</p>
 
                 <div className="mt-4 space-y-2 text-sm">
-                  <p><strong>Experience:</strong> {profile.years_experience || 'Not listed'}</p>
-                  <p><strong>Availability:</strong> {profile.availability_type || 'Not listed'}</p>
-                  <p><strong>Rate:</strong> {profile.min_hourly_rate ? `$${profile.min_hourly_rate}/hr` : 'Not listed'}</p>
-
-                  <p><strong>Shomer Shabbos:</strong> {profile.shomer_shabbos_mashgiach ? 'Yes' : 'No'}</p>
-
-                  <p><strong>Vegetable Certified:</strong> {vegetableCertified ? 'Yes' : 'No'}</p>
-
-                  <p><strong>Other Tasks:</strong> {profile.other_tasks?.length ? profile.other_tasks.join(', ') : 'Not listed'}</p>
+                  <p>
+                    <strong>Experience:</strong>{' '}
+                    {profile.years_experience || 'Not listed'}
+                  </p>
+                  <p>
+                    <strong>Availability:</strong>{' '}
+                    {profile.availability_type || 'Not listed'}
+                  </p>
+                  <p>
+                    <strong>Rate:</strong>{' '}
+                    {profile.min_hourly_rate
+                      ? `$${profile.min_hourly_rate}/hr`
+                      : 'Not listed'}
+                  </p>
+                  <p>
+                    <strong>Shomer Shabbos:</strong>{' '}
+                    {profile.shomer_shabbos_mashgiach ? 'Yes' : 'No'}
+                  </p>
+                  <p>
+                    <strong>Vegetable Certified:</strong>{' '}
+                    {vegetableCertified ? 'Yes' : 'No'}
+                  </p>
+                  <p>
+                    <strong>Other Tasks:</strong>{' '}
+                    {profile.other_tasks?.length
+                      ? profile.other_tasks.join(', ')
+                      : 'Not listed'}
+                  </p>
                 </div>
 
-                <div className="mt-5 bg-gray-50 p-4 rounded-xl">
-
+                <div className="mt-5 rounded-xl bg-gray-50 p-4">
                   {isUnlocked ? (
                     <div className="space-y-3">
-                      <p><strong>Phone:</strong> {profile.phone}</p>
+                      <p>
+                        <strong>Phone:</strong> {profile.phone || 'Not available'}
+                      </p>
 
-                      <Link href={`/mashgiach/${profile.user_id}`}>
-                        <button className="bg-black text-white px-4 py-2 rounded-xl">
+                      <Link href={`/directory/${profile.user_id}`}>
+                        <button className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800">
                           View Profile
                         </button>
                       </Link>
@@ -196,7 +223,7 @@ export default function DirectoryPage() {
                     <button
                       onClick={() => handleUnlock(profile.user_id)}
                       disabled={unlockingId === profile.user_id}
-                      className="bg-black text-white px-4 py-2 rounded-xl disabled:opacity-50"
+                      className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 disabled:opacity-50"
                     >
                       {unlockingId === profile.user_id
                         ? 'Unlocking...'
@@ -207,7 +234,6 @@ export default function DirectoryPage() {
                         : 'Unlock Profile'}
                     </button>
                   )}
-
                 </div>
               </div>
             )

@@ -129,7 +129,7 @@ export default function MashgiachJobDetailPage() {
     const { error: insertError } = await supabase.from('job_applications').insert({
       job_id: job.id,
       mashgiach_user_id: user.id,
-      status: 'applied',
+      status: 'pending',
     })
 
     if (insertError) {

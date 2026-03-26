@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 
 export default function LoginPage() {
@@ -17,10 +16,28 @@ export default function LoginPage() {
     setMessage('')
     setLoading(true)
 
-    const { error } = await signIn(email, password)
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
     if (error) {
       setMessage(error.message)
+      setLoading(false)
+      return
+    }
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    console.log('login session exists:', !!session)
+    console.log('login access token exists:', !!session?.access_token)
+    console.log('login session error:', sessionError)
+
+    if (sessionError || !session) {
+      setMessage('Login succeeded, but session was not created.')
       setLoading(false)
       return
     }
@@ -49,7 +66,7 @@ export default function LoginPage() {
     }
 
     if (userRow.role === 'business') {
-      router.push('/dashboard')
+      router.push('/business/dashboard')
       router.refresh()
       return
     }
@@ -64,34 +81,78 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (loading) return
+    await handleLogin()
+  }
+
   return (
-    <div style={{ padding: '20px', maxWidth: '500px' }}>
-      <h1>Login</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 px-6 py-12">
+      <div className="mx-auto max-w-md">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+            Welcome back
+          </h1>
+          <p className="mt-3 text-sm text-gray-600">
+            Log in to access your Mashgiach Now account.
+          </p>
+        </div>
 
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <br />
-      <br />
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-gray-200"
+              />
+            </div>
 
-      <input
-        placeholder="Password"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <br />
-      <br />
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-gray-200"
+              />
+            </div>
 
-      <button onClick={handleLogin} disabled={loading}>
-        {loading ? 'Logging in...' : 'Log In'}
-      </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-black px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Logging in...' : 'Log In'}
+            </button>
 
-      <br />
-      <br />
-      {message && <p>{message}</p>}
+            {message && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {message}
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import Navbar from '@/app/components/Navbar'
 
-export default function DashboardLayout({
+export default function BusinessLayout({
   children,
 }: {
   children: React.ReactNode

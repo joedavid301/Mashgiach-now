@@ -9,7 +9,7 @@ export default function BillingSuccessPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push('/dashboard/billing')
+      router.push('/business/billing')
     }, 2500)
 
     return () => clearTimeout(timer)

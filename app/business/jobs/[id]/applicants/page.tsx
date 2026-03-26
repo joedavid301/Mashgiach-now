@@ -20,19 +20,32 @@ type MashgiachProfile = {
   phone: string | null
 }
 
+type UnlockRow = {
+  mashgiach_user_id: string
+}
+
 export default function JobApplicantsPage() {
   const params = useParams()
   const router = useRouter()
-  const jobId = params.id as string
+  const rawJobId = params?.id
+  const jobId =
+    Array.isArray(rawJobId) ? rawJobId[0] ?? '' : typeof rawJobId === 'string' ? rawJobId : ''
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [jobTitle, setJobTitle] = useState<string>('')
   const [applications, setApplications] = useState<Application[]>([])
   const [profiles, setProfiles] = useState<Record<string, MashgiachProfile>>({})
+  const [unlockedIds, setUnlockedIds] = useState<string[]>([])
 
   useEffect(() => {
     async function loadApplicants() {
+      if (!jobId) {
+        setError('Invalid job id.')
+        setLoading(false)
+        return
+      }
+
       setLoading(true)
       setError(null)
 
@@ -81,13 +94,13 @@ export default function JobApplicantsPage() {
       setApplications(apps)
 
       if (apps.length === 0) {
+        setProfiles({})
+        setUnlockedIds([])
         setLoading(false)
         return
       }
 
-      const mashgiachIds = Array.from(
-        new Set(apps.map((app) => app.mashgiach_user_id))
-      )
+      const mashgiachIds = Array.from(new Set(apps.map((app) => app.mashgiach_user_id)))
 
       const { data: profileRows, error: profileError } = await supabase
         .from('mashgiach_profiles')
@@ -104,8 +117,24 @@ export default function JobApplicantsPage() {
       ;(profileRows || []).forEach((profile) => {
         profileMap[profile.user_id] = profile
       })
-
       setProfiles(profileMap)
+
+      const { data: unlockRows, error: unlockError } = await supabase
+        .from('profile_unlocks')
+        .select('mashgiach_user_id')
+        .eq('business_user_id', user.id)
+        .in('mashgiach_user_id', mashgiachIds)
+
+      if (unlockError) {
+        setError(unlockError.message)
+        setLoading(false)
+        return
+      }
+
+      setUnlockedIds(
+        ((unlockRows as UnlockRow[] | null) || []).map((row) => row.mashgiach_user_id)
+      )
+
       setLoading(false)
     }
 
@@ -124,7 +153,7 @@ export default function JobApplicantsPage() {
     <div className="mx-auto max-w-5xl p-6">
       <div className="mb-6">
         <Link
-          href="/dashboard/jobs"
+          href="/business/jobs"
           className="text-sm text-gray-600 hover:text-black"
         >
           ← Back to Jobs
@@ -133,9 +162,7 @@ export default function JobApplicantsPage() {
         <h1 className="mt-3 text-2xl font-bold text-gray-900">Applicants</h1>
 
         <p className="mt-1 text-sm text-gray-600">
-          {jobTitle
-            ? `Applicants for ${jobTitle}`
-            : 'Review applicants for this job'}
+          {jobTitle ? `Applicants for ${jobTitle}` : 'Review applicants for this job'}
         </p>
       </div>
 
@@ -147,6 +174,7 @@ export default function JobApplicantsPage() {
         <div className="space-y-4">
           {applications.map((application) => {
             const profile = profiles[application.mashgiach_user_id]
+            const isUnlocked = unlockedIds.includes(application.mashgiach_user_id)
 
             return (
               <div
@@ -155,25 +183,36 @@ export default function JobApplicantsPage() {
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {profile
-                        ? `${profile.first_name} ${profile.last_name}`
-                        : 'Unknown Applicant'}
-                    </h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {profile
+                          ? `${profile.first_name} ${profile.last_name}`
+                          : 'Unknown Applicant'}
+                      </h2>
+
+                      {isUnlocked ? (
+                        <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+                          Unlocked
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+                          Locked
+                        </span>
+                      )}
+                    </div>
 
                     <p className="mt-1 text-sm text-gray-600">
                       {profile?.city || 'City not available'}
                     </p>
 
-                    {profile?.phone && (
-                      <p className="mt-1 text-sm text-gray-700">
-                        {profile.phone}
-                      </p>
-                    )}
+                    <p className="mt-1 text-sm text-gray-700">
+                      {isUnlocked
+                        ? profile?.phone || 'Phone not available'
+                        : 'Unlock required to view phone'}
+                    </p>
 
                     <p className="mt-2 text-xs text-gray-500">
-                      Applied on{' '}
-                      {new Date(application.created_at).toLocaleDateString()}
+                      Applied on {new Date(application.created_at).toLocaleDateString()}
                     </p>
 
                     <p className="mt-1 text-xs text-gray-500">

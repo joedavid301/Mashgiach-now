@@ -79,8 +79,8 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?stripe=cancelled`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/business/billing/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/business/billing?stripe=cancelled`,
       metadata: {
         userId,
       },

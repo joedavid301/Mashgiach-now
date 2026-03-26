@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 
 type UserRole = 'business' | 'mashgiach' | null
 
+function navLinkClasses(active: boolean) {
+  return active
+    ? 'rounded-xl bg-black px-4 py-2 text-sm font-medium text-white'
+    : 'rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100'
+}
+
 export default function Navbar() {
   const router = useRouter()
+  const pathname = usePathname()
+
   const [role, setRole] = useState<UserRole>(null)
   const [loading, setLoading] = useState(true)
 
@@ -59,36 +67,43 @@ export default function Navbar() {
         {role === 'business' && (
           <>
             <Link
-              href="/dashboard"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              href="/business/dashboard"
+              className={navLinkClasses(pathname === '/business/dashboard')}
             >
               Dashboard
             </Link>
 
             <Link
               href="/directory"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              className={navLinkClasses(
+                pathname === '/directory' || pathname.startsWith('/directory/')
+              )}
             >
               Directory
             </Link>
 
             <Link
-              href="/dashboard/jobs"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              href="/business/jobs"
+              className={navLinkClasses(
+                pathname === '/business/jobs' || pathname.startsWith('/business/jobs/')
+              )}
             >
               Jobs
             </Link>
 
             <Link
-              href="/dashboard/unlocked"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              href="/business/unlocked"
+              className={navLinkClasses(pathname === '/business/unlocked')}
             >
               My Unlocks
             </Link>
 
             <Link
-              href="/dashboard/billing"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              href="/business/billing"
+              className={navLinkClasses(
+                pathname === '/business/billing' ||
+                  pathname.startsWith('/business/billing/')
+              )}
             >
               Billing
             </Link>
@@ -99,21 +114,23 @@ export default function Navbar() {
           <>
             <Link
               href="/mashgiach/dashboard"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              className={navLinkClasses(pathname === '/mashgiach/dashboard')}
             >
               Dashboard
             </Link>
 
             <Link
               href="/mashgiach/profile"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              className={navLinkClasses(pathname === '/mashgiach/profile')}
             >
               My Profile
             </Link>
 
             <Link
               href="/mashgiach/jobs"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              className={navLinkClasses(
+                pathname === '/mashgiach/jobs' || pathname.startsWith('/mashgiach/jobs/')
+              )}
             >
               Jobs
             </Link>

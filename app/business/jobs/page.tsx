@@ -76,7 +76,7 @@ export default function BusinessJobsPage() {
         </div>
 
         <Link
-          href="/dashboard/jobs/new"
+          href="/business/jobs/new"
           className="rounded-xl bg-black px-4 py-3 text-sm font-medium text-white hover:bg-gray-800"
         >
           Post New Job
@@ -120,14 +120,14 @@ export default function BusinessJobsPage() {
                   {/* Right */}
                   <div className="flex gap-2">
                     <Link
-                      href={`/dashboard/jobs/${job.id}/edit`}
+                      href={`/business/jobs/${job.id}/edit`}
                       className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       Edit
                     </Link>
 
                     <Link
-                      href={`/dashboard/jobs/${job.id}/applicants`}
+                      href={`/business/jobs/${job.id}/applicants`}
                       className="rounded-lg bg-black px-3 py-2 text-sm text-white hover:bg-gray-800"
                     >
                       Applicants

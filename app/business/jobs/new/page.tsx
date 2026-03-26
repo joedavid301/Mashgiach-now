@@ -58,7 +58,7 @@ export default function NewJobPage() {
       return
     }
 
-    router.push('/dashboard/jobs')
+    router.push('/business/jobs')
     router.refresh()
   }
 
@@ -227,7 +227,7 @@ export default function NewJobPage() {
 
             <button
               type="button"
-              onClick={() => router.push('/dashboard/jobs')}
+              onClick={() => router.push('/business/jobs')}
               className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
               Cancel
