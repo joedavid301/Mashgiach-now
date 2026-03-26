@@ -73,7 +73,6 @@ export async function POST(req: Request) {
             stripe_subscription_id: subscriptionId ?? null,
             subscription_status: subscriptionStatus,
             current_period_end: currentPeriodEnd,
-            unlock_credits: 20,
           })
           .eq('user_id', userId)
 
@@ -121,7 +120,6 @@ export async function POST(req: Request) {
             current_period_end: periodEndUnix
               ? new Date(periodEndUnix * 1000).toISOString()
               : null,
-            unlock_credits: 20,
           })
           .eq('stripe_subscription_id', subscriptionId)
 
