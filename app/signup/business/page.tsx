@@ -49,10 +49,16 @@ export default function BusinessSignupPage() {
           contact_name: contactName,
           phone,
           city,
-          plan_type: 'monthly',
-          unlock_credits: 20,
+          plan_type: null,
+          unlock_credits: 0,
           unlocks_used: 0,
-          subscription_status: 'active',
+          monthly_unlock_limit: 0,
+          unlocks_used_this_month: 0,
+          subscription_status: 'inactive',
+          stripe_customer_id: null,
+          stripe_subscription_id: null,
+          current_period_end: null,
+          unlock_cycle_anchor: null,
         })
 
       if (businessProfileError) throw businessProfileError
