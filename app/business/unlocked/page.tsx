@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
 type MashgiachProfile = {
@@ -19,8 +18,6 @@ type UnlockRow = {
 }
 
 export default function UnlockedProfilesPage() {
-  const router = useRouter()
-
   const [loading, setLoading] = useState(true)
   const [profiles, setProfiles] = useState<MashgiachProfile[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -36,11 +33,11 @@ export default function UnlockedProfilesPage() {
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser()
 
-      if (userError || !user) {
-        router.push('/login')
+      if (!user) {
+        setError('Could not load your account.')
+        setLoading(false)
         return
       }
 
@@ -109,7 +106,7 @@ export default function UnlockedProfilesPage() {
     }
 
     loadUnlockedProfiles()
-  }, [router])
+  }, [])
 
   if (loading) {
     return (

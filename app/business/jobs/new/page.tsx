@@ -28,11 +28,10 @@ export default function NewJobPage() {
 
     const {
       data: { user },
-      error: userError,
     } = await supabase.auth.getUser()
 
-    if (userError || !user) {
-      setError('You must be logged in to post a job.')
+    if (!user) {
+      setError('Could not load your account.')
       setLoading(false)
       return
     }

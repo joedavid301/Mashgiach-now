@@ -26,11 +26,10 @@ export default function BusinessJobsPage() {
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser()
 
-      if (userError || !user) {
-        setError('You must be logged in to view your job posts.')
+      if (!user) {
+        setError('Could not load your account.')
         setLoading(false)
         return
       }

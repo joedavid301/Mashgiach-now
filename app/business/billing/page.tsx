@@ -20,17 +20,10 @@ export default function BillingPage() {
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser()
 
-      if (userError) {
-        setErrorMessage(`Could not load logged-in user: ${userError.message}`)
-        setLoading(false)
-        return
-      }
-
       if (!user) {
-        setErrorMessage('No logged-in user found.')
+        setErrorMessage('Could not load your account.')
         setLoading(false)
         return
       }

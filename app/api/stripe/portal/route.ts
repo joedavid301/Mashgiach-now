@@ -1,19 +1,59 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { stripe } from '@/app/lib/stripe'
 import { supabaseAdmin } from '@/app/lib/supabaseAdmin'
 
+const supabaseAuth = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const userId = body?.userId as string | undefined
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.replace('Bearer ', '')
+      : null
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized: no token' }, { status: 401 })
+    }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuth.auth.getUser(token)
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = user.id
+
+    const { data: userRecord, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, role')
+      .eq('id', userId)
+      .single()
+
+    if (userError || !userRecord) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (userRecord.id !== userId) {
+      return NextResponse.json({ error: 'Unauthorized user mismatch' }, { status: 403 })
+    }
+
+    if (userRecord.role !== 'business') {
+      return NextResponse.json(
+        { error: 'Only business users can manage subscriptions' },
+        { status: 403 }
+      )
     }
 
     const { data: businessProfile, error } = await supabaseAdmin
       .from('business_profiles')
-      .select('stripe_customer_id')
+      .select('user_id, stripe_customer_id')
       .eq('user_id', userId)
       .maybeSingle()
 

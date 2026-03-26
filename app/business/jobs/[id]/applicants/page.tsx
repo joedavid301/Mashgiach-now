@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 
 type Application = {
@@ -26,7 +26,6 @@ type UnlockRow = {
 
 export default function JobApplicantsPage() {
   const params = useParams()
-  const router = useRouter()
   const rawJobId = params?.id
   const jobId =
     Array.isArray(rawJobId) ? rawJobId[0] ?? '' : typeof rawJobId === 'string' ? rawJobId : ''
@@ -54,7 +53,8 @@ export default function JobApplicantsPage() {
       } = await supabase.auth.getUser()
 
       if (!user) {
-        router.push('/login')
+        setError('Could not load your account.')
+        setLoading(false)
         return
       }
 
@@ -139,7 +139,7 @@ export default function JobApplicantsPage() {
     }
 
     loadApplicants()
-  }, [jobId, router])
+  }, [jobId])
 
   if (loading) {
     return <div className="p-6 text-sm text-gray-600">Loading applicants...</div>

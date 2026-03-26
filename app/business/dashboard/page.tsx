@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
 type MashgiachProfile = {
@@ -14,8 +13,6 @@ type MashgiachProfile = {
 }
 
 export default function DashboardPage() {
-  const router = useRouter()
-
   const [loading, setLoading] = useState(true)
   const [businessName, setBusinessName] = useState<string | null>(null)
   const [remaining, setRemaining] = useState(0)
@@ -31,29 +28,7 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser()
 
       if (!user) {
-        router.replace('/login')
-        return
-      }
-
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      if (!userRow) {
-        setError('User not found.')
-        setLoading(false)
-        return
-      }
-
-      if (userRow.role === 'mashgiach') {
-        router.replace('/mashgiach/dashboard')
-        return
-      }
-
-      if (userRow.role !== 'business') {
-        setError('Access denied.')
+        setError('Could not load your account.')
         setLoading(false)
         return
       }
@@ -110,7 +85,7 @@ export default function DashboardPage() {
     }
 
     loadDashboard()
-  }, [router])
+  }, [])
 
   if (loading) return <div className="p-6">Loading dashboard...</div>
   if (error) return <div className="p-6">{error}</div>

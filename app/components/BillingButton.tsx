@@ -11,10 +11,11 @@ export default function BillingButton() {
       setLoading(true)
 
       const {
-        data: { user },
-      } = await supabase.auth.getUser()
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-      if (!user) {
+      if (sessionError || !session?.access_token) {
         alert('Please log in first')
         return
       }
@@ -23,8 +24,8 @@ export default function BillingButton() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ userId: user.id }),
       })
 
       const data = await res.json()
