@@ -1,39 +1,69 @@
-import { supabase } from './supabase'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { createServerClient } from '@supabase/ssr'
 
-export async function signUp(
-  email: string,
-  password: string,
-  role: 'mashgiach' | 'business'
-) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  })
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies()
 
-  if (error) {
-    return { data: null, error }
-  }
-
-  if (!data.user) {
-    return { data: null, error: { message: 'No user returned from signup' } }
-  }
-
-  const { error: dbError } = await supabase.from('users').insert({
-    id: data.user.id,
-    email: data.user.email,
-    role,
-  })
-
-  if (dbError) {
-    return { data, error: dbError }
-  }
-
-  return { data, error: null }
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set() {},
+        remove() {},
+      },
+    }
+  )
 }
 
-export async function signIn(email: string, password: string) {
-  return await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+export async function requireBusinessUser() {
+  const supabase = await createSupabaseServerClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const { data: roleRow, error } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (error || !roleRow || roleRow.role !== 'business') {
+    redirect('/mashgiach/dashboard')
+  }
+
+  return { supabase, user }
+}
+
+export async function requireMashgiachUser() {
+  const supabase = await createSupabaseServerClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const { data: roleRow, error } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (error || !roleRow || roleRow.role !== 'mashgiach') {
+    redirect('/business/dashboard')
+  }
+
+  return { supabase, user }
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
@@ -32,11 +33,8 @@ export default function LoginPage() {
       error: sessionError,
     } = await supabase.auth.getSession()
 
-    console.log('login session exists:', !!session)
-    console.log('login access token exists:', !!session?.access_token)
-    console.log('login session error:', sessionError)
-
     if (sessionError || !session) {
+      await supabase.auth.signOut()
       setMessage('Login succeeded, but session was not created.')
       setLoading(false)
       return
@@ -48,6 +46,7 @@ export default function LoginPage() {
     } = await supabase.auth.getUser()
 
     if (userError || !user) {
+      await supabase.auth.signOut()
       setMessage('Login succeeded, but could not load user.')
       setLoading(false)
       return
@@ -60,6 +59,7 @@ export default function LoginPage() {
       .maybeSingle()
 
     if (roleError || !userRow) {
+      await supabase.auth.signOut()
       setMessage('Logged in, but could not load account role.')
       setLoading(false)
       return
@@ -77,6 +77,7 @@ export default function LoginPage() {
       return
     }
 
+    await supabase.auth.signOut()
     setMessage('Unknown account role.')
     setLoading(false)
   }
@@ -92,24 +93,20 @@ export default function LoginPage() {
       <div className="mx-auto max-w-md">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-            Welcome back
+            Log in
           </h1>
           <p className="mt-3 text-sm text-gray-600">
-            Log in to access your Mashgiach Now account.
+            Access your Mashgiach Now account.
           </p>
         </div>
 
         <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-medium text-gray-700"
-              >
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
-                id="email"
                 type="email"
                 autoComplete="email"
                 placeholder="you@example.com"
@@ -120,14 +117,10 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm font-medium text-gray-700"
-              >
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 Password
               </label>
               <input
-                id="password"
                 type="password"
                 autoComplete="current-password"
                 placeholder="Enter your password"
@@ -151,6 +144,35 @@ export default function LoginPage() {
               </div>
             )}
           </form>
+
+          <div className="mt-6 space-y-3 border-t border-gray-200 pt-6 text-center text-sm">
+            <div>
+              <Link
+                href="/forgot-password"
+                className="text-gray-700 hover:text-black"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            <div className="text-gray-600">Need an account?</div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/signup/business"
+                className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 font-medium text-gray-900 transition hover:bg-gray-50"
+              >
+                Join as a Business
+              </Link>
+
+              <Link
+                href="/signup/mashgiach"
+                className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 font-medium text-gray-900 transition hover:bg-gray-50"
+              >
+                Join as a Mashgiach
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
