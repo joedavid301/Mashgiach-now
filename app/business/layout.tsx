@@ -1,12 +1,13 @@
 import Navbar from '@/app/components/Navbar'
-import { requireBusinessUser } from '@/app/lib/auth'
+import { ensureBusinessProfile, requireBusinessUser } from '@/app/lib/auth'
 
 export default async function BusinessLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  await requireBusinessUser()
+  const { supabase, user } = await requireBusinessUser()
+  await ensureBusinessProfile(supabase, user.id)
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

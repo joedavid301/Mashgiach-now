@@ -2,16 +2,18 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const signupMessage = searchParams.get('message')
 
   const handleLogin = async () => {
     setMessage('')
@@ -101,6 +103,12 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+          {signupMessage && (
+            <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {signupMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">

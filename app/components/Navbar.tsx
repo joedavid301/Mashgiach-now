@@ -18,6 +18,7 @@ export default function Navbar() {
   const pathname = usePathname()
 
   const [role, setRole] = useState<UserRole>(null)
+  const [email, setEmail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,12 +34,13 @@ export default function Navbar() {
 
       const { data: userRow, error } = await supabase
         .from('users')
-        .select('role')
+        .select('role, email')
         .eq('id', user.id)
         .single()
 
       if (!error) {
         setRole((userRow?.role as UserRole) || null)
+        setEmail(userRow?.email || user.email || null)
       }
 
       setLoading(false)
@@ -71,6 +73,13 @@ export default function Navbar() {
               className={navLinkClasses(pathname === '/business/dashboard')}
             >
               Dashboard
+            </Link>
+
+            <Link
+              href="/business/profile"
+              className={navLinkClasses(pathname === '/business/profile')}
+            >
+              Profile
             </Link>
 
             <Link
@@ -107,6 +116,12 @@ export default function Navbar() {
             >
               Billing
             </Link>
+
+            {email && (
+              <div className="ml-auto text-xs text-gray-500">
+                Signed in as {email}
+              </div>
+            )}
           </>
         )}
 

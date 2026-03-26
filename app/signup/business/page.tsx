@@ -41,26 +41,10 @@ export default function BusinessSignupPage() {
 
       if (userInsertError) throw userInsertError
 
-      const { error: businessProfileError } = await supabase
-        .from('business_profiles')
-        .upsert({
-          user_id: user.id,
-          business_name: businessName,
-          contact_name: contactName,
-          phone,
-          city,
-          monthly_unlock_limit: 0,
-          unlocks_used_this_month: 0,
-          subscription_status: 'inactive',
-          stripe_customer_id: null,
-          stripe_subscription_id: null,
-          current_period_end: null,
-          unlock_cycle_anchor: null,
-        })
-
-      if (businessProfileError) throw businessProfileError
-
-      router.push('/login')
+      const params = new URLSearchParams({
+        message: 'Account created. Verify your email and log in to finish setup.',
+      })
+      router.push(`/login?${params.toString()}`)
     } catch (err: any) {
       setError(err.message || 'Something went wrong.')
     } finally {

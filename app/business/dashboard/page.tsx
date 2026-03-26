@@ -13,8 +13,11 @@ type MashgiachProfile = {
 }
 
 export default function DashboardPage() {
+  const [accountEmail, setAccountEmail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [businessName, setBusinessName] = useState<string | null>(null)
+  const [contactName, setContactName] = useState<string | null>(null)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [remaining, setRemaining] = useState(0)
   const [used, setUsed] = useState(0)
   const [unlockCount, setUnlockCount] = useState(0)
@@ -33,10 +36,22 @@ export default function DashboardPage() {
         return
       }
 
+      const { data: userRow, error: userRowError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (userRowError) {
+        setError(userRowError.message)
+        setLoading(false)
+        return
+      }
+
       const { data: profile } = await supabase
         .from('business_profiles')
         .select(
-          'business_name, monthly_unlock_limit, unlocks_used_this_month'
+          'business_name, contact_name, subscription_status, monthly_unlock_limit, unlocks_used_this_month'
         )
         .eq('user_id', user.id)
         .maybeSingle()
@@ -47,7 +62,10 @@ export default function DashboardPage() {
         return
       }
 
+      setAccountEmail(userRow?.email || user.email || null)
       setBusinessName(profile.business_name || 'Dashboard')
+      setContactName(profile.contact_name || null)
+      setSubscriptionStatus(profile.subscription_status || 'inactive')
 
       const limit = profile.monthly_unlock_limit ?? 20
       const usedCount = profile.unlocks_used_this_month ?? 0
@@ -94,6 +112,44 @@ export default function DashboardPage() {
     <div>
       <h1 className="mb-6 text-3xl font-bold">{businessName}</h1>
 
+      {!businessName?.trim() && (
+        <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-amber-900">Complete Business Profile</h2>
+              <p className="mt-1 text-sm text-amber-800">Add your business details so your account is fully set up.</p>
+            </div>
+            <Link href="/business/profile" className="rounded-xl bg-black px-4 py-3 text-sm font-medium text-white hover:bg-gray-800">Complete Business Profile</Link>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-8 rounded-2xl border bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900">Account Summary</h2>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Email</p>
+            <p className="mt-1 text-sm text-gray-900">{accountEmail || 'Not available'}</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Business Name</p>
+            <p className="mt-1 text-sm text-gray-900">{businessName || 'Not available'}</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Contact Name</p>
+            <p className="mt-1 text-sm text-gray-900">{contactName || 'Not available'}</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Subscription Status</p>
+            <p className="mt-1 text-sm capitalize text-gray-900">{subscriptionStatus || 'inactive'}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl bg-white p-6 shadow">
           <p className="text-sm text-gray-500">Unlocks Remaining</p>
@@ -120,6 +176,13 @@ export default function DashboardPage() {
             className="rounded-xl bg-black px-5 py-3 text-white"
           >
             Browse Mashgiachim
+          </Link>
+
+          <Link
+            href="/business/profile"
+            className="rounded-xl border px-5 py-3"
+          >
+            Edit Business Profile
           </Link>
 
           <Link

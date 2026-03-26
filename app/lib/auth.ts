@@ -2,6 +2,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>
+
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies()
 
@@ -42,6 +44,39 @@ export async function requireBusinessUser() {
   }
 
   return { supabase, user }
+}
+
+export async function ensureBusinessProfile(
+  supabase: SupabaseServerClient,
+  userId: string
+) {
+  const { data: profile, error } = await supabase
+    .from('business_profiles')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (profile) {
+    return profile
+  }
+
+  const { data: createdProfile, error: insertError } = await supabase
+    .from('business_profiles')
+    .insert({
+      user_id: userId,
+    })
+    .select('user_id')
+    .single()
+
+  if (insertError) {
+    throw insertError
+  }
+
+  return createdProfile
 }
 
 export async function requireMashgiachUser() {
