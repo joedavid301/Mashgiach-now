@@ -51,7 +51,7 @@ export default function DashboardPage() {
       const { data: profile } = await supabase
         .from('business_profiles')
         .select(
-          'business_name, contact_name, subscription_status, monthly_unlock_limit, unlocks_used_this_month'
+          'business_name, contact_name, subscription_status, monthly_unlock_limit, extra_unlock_credits, unlocks_used_this_month'
         )
         .eq('user_id', user.id)
         .maybeSingle()
@@ -62,13 +62,23 @@ export default function DashboardPage() {
         return
       }
 
+      if (
+        typeof profile.monthly_unlock_limit !== 'number' ||
+        typeof profile.extra_unlock_credits !== 'number' ||
+        typeof profile.unlocks_used_this_month !== 'number'
+      ) {
+        setError('Business billing fields are missing from this profile.')
+        setLoading(false)
+        return
+      }
+
       setAccountEmail(userRow?.email || user.email || null)
       setBusinessName(profile.business_name || 'Dashboard')
       setContactName(profile.contact_name || null)
       setSubscriptionStatus(profile.subscription_status || 'inactive')
 
-      const limit = profile.monthly_unlock_limit ?? 20
-      const usedCount = profile.unlocks_used_this_month ?? 0
+      const limit = profile.monthly_unlock_limit + profile.extra_unlock_credits
+      const usedCount = profile.unlocks_used_this_month
 
       setUsed(usedCount)
       setRemaining(limit - usedCount)
@@ -166,6 +176,23 @@ export default function DashboardPage() {
           <p className="text-3xl font-bold">{unlockCount}</p>
         </div>
       </div>
+
+      {subscriptionStatus === 'active' && remaining <= 0 && (
+        <div className="mb-10 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-medium text-amber-900">
+            You have 0 unlocks remaining this month.
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            Buy 5 more unlocks for $25 to continue.
+          </p>
+          <Link
+            href="/business/billing"
+            className="mt-4 inline-flex rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+          >
+            Buy 5 More Unlocks for $25
+          </Link>
+        </div>
+      )}
 
       <div className="mb-10">
         <h2 className="mb-4 text-xl font-semibold">Quick Actions</h2>

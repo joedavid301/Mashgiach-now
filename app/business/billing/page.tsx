@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import BillingButton from '@/app/components/BillingButton'
@@ -10,6 +9,7 @@ export default function BillingPage() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [unlocksRemaining, setUnlocksRemaining] = useState<number | null>(null)
   const [monthlyUnlockLimit, setMonthlyUnlockLimit] = useState<number | null>(null)
+  const [extraUnlockCredits, setExtraUnlockCredits] = useState<number | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -33,7 +33,7 @@ export default function BillingPage() {
       const { data, error } = await supabase
         .from('business_profiles')
         .select(
-          'user_id, subscription_status, monthly_unlock_limit, unlocks_used_this_month'
+          'user_id, subscription_status, monthly_unlock_limit, extra_unlock_credits, unlocks_used_this_month'
         )
         .eq('user_id', user.id)
         .maybeSingle()
@@ -50,12 +50,24 @@ export default function BillingPage() {
         return
       }
 
-      const limit = data.monthly_unlock_limit ?? 0
-      const used = data.unlocks_used_this_month ?? 0
+      if (
+        typeof data.monthly_unlock_limit !== 'number' ||
+        typeof data.extra_unlock_credits !== 'number' ||
+        typeof data.unlocks_used_this_month !== 'number'
+      ) {
+        setErrorMessage('Business billing fields are missing from this profile.')
+        setLoading(false)
+        return
+      }
+
+      const limit = data.monthly_unlock_limit
+      const extraCredits = data.extra_unlock_credits
+      const used = data.unlocks_used_this_month
 
       setIsSubscribed(data.subscription_status === 'active')
       setMonthlyUnlockLimit(limit)
-      setUnlocksRemaining(Math.max(limit - used, 0))
+      setExtraUnlockCredits(extraCredits)
+      setUnlocksRemaining(Math.max(limit + extraCredits - used, 0))
 
       setLoading(false)
     }
@@ -85,10 +97,40 @@ export default function BillingPage() {
           </p>
 
           {unlocksRemaining !== null && monthlyUnlockLimit !== null && (
-            <p className="text-sm text-gray-600">
-              {unlocksRemaining} of {monthlyUnlockLimit} unlocks remaining this
-              month
-            </p>
+            <div className="space-y-1 text-sm text-gray-600">
+              <p>
+                {unlocksRemaining} of{' '}
+                {monthlyUnlockLimit + (extraUnlockCredits ?? 0)} unlocks remaining
+                this month
+              </p>
+              <p>
+                Included plan: {monthlyUnlockLimit} unlocks
+                {typeof extraUnlockCredits === 'number' && extraUnlockCredits > 0
+                  ? ` • Extra credits: ${extraUnlockCredits}`
+                  : ''}
+              </p>
+            </div>
+          )}
+
+          {unlocksRemaining !== null && unlocksRemaining <= 0 && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-medium text-amber-900">
+                You have 0 unlocks remaining this month.
+              </p>
+              <p className="mt-1 text-sm text-amber-800">
+                Buy 5 more unlocks for $25 to continue.
+              </p>
+              <button
+                type="button"
+                disabled
+                className="mt-4 inline-flex cursor-not-allowed rounded-xl bg-black px-4 py-2 text-sm font-medium text-white opacity-70"
+              >
+                Buy 5 More Unlocks for $25
+              </button>
+              <p className="mt-2 text-xs text-amber-800">
+                Checkout will be connected next.
+              </p>
+            </div>
           )}
         </div>
       ) : (
@@ -108,6 +150,7 @@ export default function BillingPage() {
 
         <ul className="space-y-2 text-sm text-gray-700">
           <li>• 20 profile unlocks per month</li>
+          <li>• Buy 5 more unlocks for $25 when you run out</li>
           <li>• Full contact details for mashgichim</li>
           <li>• Access to qualified candidates</li>
           <li>• Fast hiring without agencies</li>

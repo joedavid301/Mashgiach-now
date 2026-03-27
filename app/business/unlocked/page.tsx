@@ -43,7 +43,9 @@ export default function UnlockedProfilesPage() {
 
       const { data: businessProfile, error: businessError } = await supabase
         .from('business_profiles')
-        .select('subscription_status, monthly_unlock_limit, unlocks_used_this_month')
+        .select(
+          'subscription_status, monthly_unlock_limit, extra_unlock_credits, unlocks_used_this_month'
+        )
         .eq('user_id', user.id)
         .single()
 
@@ -54,8 +56,20 @@ export default function UnlockedProfilesPage() {
       }
 
       const status = businessProfile.subscription_status ?? 'inactive'
-      const limit = businessProfile.monthly_unlock_limit ?? 20
-      const usedCount = businessProfile.unlocks_used_this_month ?? 0
+
+      if (
+        typeof businessProfile.monthly_unlock_limit !== 'number' ||
+        typeof businessProfile.extra_unlock_credits !== 'number' ||
+        typeof businessProfile.unlocks_used_this_month !== 'number'
+      ) {
+        setError('Business billing fields are missing from this profile.')
+        setLoading(false)
+        return
+      }
+
+      const limit =
+        businessProfile.monthly_unlock_limit + businessProfile.extra_unlock_credits
+      const usedCount = businessProfile.unlocks_used_this_month
       const remainingCount = Math.max(limit - usedCount, 0)
 
       setSubscriptionStatus(status)
@@ -151,6 +165,23 @@ export default function UnlockedProfilesPage() {
           <p className="mt-1 text-xl font-semibold">{used}</p>
         </div>
       </div>
+
+      {subscriptionStatus === 'active' && remaining <= 0 && (
+        <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-medium text-amber-900">
+            You have 0 unlocks remaining this month.
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            Buy 5 more unlocks for $25 to continue.
+          </p>
+          <Link
+            href="/business/billing"
+            className="mt-4 inline-flex rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+          >
+            Buy 5 More Unlocks for $25
+          </Link>
+        </div>
+      )}
 
       {profiles.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">

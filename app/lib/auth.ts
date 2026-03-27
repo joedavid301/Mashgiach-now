@@ -68,6 +68,10 @@ export async function ensureBusinessProfile(
     .from('business_profiles')
     .insert({
       user_id: userId,
+      subscription_status: 'inactive',
+      monthly_unlock_limit: 20,
+      extra_unlock_credits: 0,
+      unlocks_used_this_month: 0,
     })
     .select('user_id')
     .single()

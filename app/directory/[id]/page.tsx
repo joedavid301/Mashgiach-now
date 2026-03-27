@@ -55,6 +55,8 @@ export default function DirectoryProfilePage() {
   const [unlocking, setUnlocking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('inactive')
+  const [remainingUnlocks, setRemainingUnlocks] = useState(0)
 
   useEffect(() => {
     async function loadProfile() {
@@ -103,6 +105,33 @@ export default function DirectoryProfilePage() {
         setViewerRole(role)
 
         if (role === 'business') {
+          const { data: businessProfile } = await supabase
+            .from('business_profiles')
+            .select(
+              'subscription_status, monthly_unlock_limit, extra_unlock_credits, unlocks_used_this_month'
+            )
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (businessProfile) {
+            setSubscriptionStatus(businessProfile.subscription_status || 'inactive')
+
+            if (
+              typeof businessProfile.monthly_unlock_limit === 'number' &&
+              typeof businessProfile.extra_unlock_credits === 'number' &&
+              typeof businessProfile.unlocks_used_this_month === 'number'
+            ) {
+              setRemainingUnlocks(
+                Math.max(
+                  businessProfile.monthly_unlock_limit +
+                    businessProfile.extra_unlock_credits -
+                    businessProfile.unlocks_used_this_month,
+                  0
+                )
+              )
+            }
+          }
+
           const { data: unlock } = await supabase
             .from('profile_unlocks')
             .select('id')
@@ -411,17 +440,40 @@ export default function DirectoryProfilePage() {
                   reference phone numbers remain hidden until unlocked.
                 </p>
 
-                <button
-                  onClick={handleUnlock}
-                  disabled={unlocking || !sessionReady}
-                  className="rounded-lg bg-black px-4 py-2 text-sm text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {unlocking
-                    ? 'Unlocking...'
-                    : !sessionReady
-                    ? 'Loading Session...'
-                    : 'Unlock Profile'}
-                </button>
+                {subscriptionStatus !== 'active' ? (
+                  <div className="space-y-3">
+                    <p>Subscription required to unlock profiles.</p>
+                    <Link
+                      href="/business/billing"
+                      className="inline-flex rounded-lg bg-black px-4 py-2 text-sm text-white transition hover:bg-gray-800"
+                    >
+                      Start Subscription
+                    </Link>
+                  </div>
+                ) : remainingUnlocks <= 0 ? (
+                  <div className="space-y-3">
+                    <p>You have 0 unlocks remaining this month.</p>
+                    <p>Buy 5 more unlocks for $25 to continue.</p>
+                    <Link
+                      href="/business/billing"
+                      className="inline-flex rounded-lg bg-black px-4 py-2 text-sm text-white transition hover:bg-gray-800"
+                    >
+                      Buy 5 More Unlocks for $25
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleUnlock}
+                    disabled={unlocking || !sessionReady}
+                    className="rounded-lg bg-black px-4 py-2 text-sm text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {unlocking
+                      ? 'Unlocking...'
+                      : !sessionReady
+                      ? 'Loading Session...'
+                      : 'Unlock Profile'}
+                  </button>
+                )}
 
                 {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
               </div>

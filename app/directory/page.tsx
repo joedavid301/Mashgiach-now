@@ -45,17 +45,29 @@ export default function DirectoryPage() {
 
         const { data: bp } = await supabase
           .from('business_profiles')
-          .select('subscription_status, monthly_unlock_limit, unlocks_used_this_month')
+          .select(
+            'subscription_status, monthly_unlock_limit, extra_unlock_credits, unlocks_used_this_month'
+          )
           .eq('user_id', user.id)
           .single()
 
         if (bp) {
           setSubscriptionStatus(bp.subscription_status || 'inactive')
 
-          const limit = bp.monthly_unlock_limit ?? 20
-          const used = bp.unlocks_used_this_month ?? 0
-
-          setRemaining(Math.max(limit - used, 0))
+          if (
+            typeof bp.monthly_unlock_limit === 'number' &&
+            typeof bp.extra_unlock_credits === 'number' &&
+            typeof bp.unlocks_used_this_month === 'number'
+          ) {
+            setRemaining(
+              Math.max(
+                bp.monthly_unlock_limit +
+                  bp.extra_unlock_credits -
+                  bp.unlocks_used_this_month,
+                0
+              )
+            )
+          }
         }
 
         const { data: unlocks } = await supabase
@@ -126,8 +138,8 @@ export default function DirectoryPage() {
         prev.includes(mashgiachUserId) ? prev : [...prev, mashgiachUserId]
       )
 
-      if (typeof data.unlocksRemaining === 'number') {
-        setRemaining(data.unlocksRemaining)
+      if (typeof data.remainingUnlocks === 'number') {
+        setRemaining(data.remainingUnlocks)
       }
     } catch (err) {
       console.error(err)
@@ -219,19 +231,37 @@ export default function DirectoryPage() {
                         </button>
                       </Link>
                     </div>
+                  ) : subscriptionStatus !== 'active' ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-700">
+                        Subscription required to unlock profiles.
+                      </p>
+                      <Link
+                        href="/business/billing"
+                        className="inline-flex rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800"
+                      >
+                        Start Subscription
+                      </Link>
+                    </div>
+                  ) : remaining <= 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-700">
+                        Buy 5 more unlocks for $25 to continue.
+                      </p>
+                      <Link
+                        href="/business/billing"
+                        className="inline-flex rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800"
+                      >
+                        Buy 5 More Unlocks for $25
+                      </Link>
+                    </div>
                   ) : (
                     <button
                       onClick={() => handleUnlock(profile.user_id)}
                       disabled={unlockingId === profile.user_id}
                       className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 disabled:opacity-50"
                     >
-                      {unlockingId === profile.user_id
-                        ? 'Unlocking...'
-                        : subscriptionStatus !== 'active'
-                        ? 'Subscription Required'
-                        : remaining <= 0
-                        ? 'Limit Reached'
-                        : 'Unlock Profile'}
+                      {unlockingId === profile.user_id ? 'Unlocking...' : 'Unlock Profile'}
                     </button>
                   )}
                 </div>

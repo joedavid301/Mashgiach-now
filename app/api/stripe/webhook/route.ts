@@ -71,6 +71,7 @@ export async function POST(req: Request) {
           .update({
             stripe_customer_id: customerId ?? null,
             stripe_subscription_id: subscriptionId ?? null,
+            // Plan size is stored separately from access status.
             subscription_status: subscriptionStatus,
             current_period_end: currentPeriodEnd,
           })
@@ -116,6 +117,7 @@ export async function POST(req: Request) {
         const { error } = await supabase
           .from('business_profiles')
           .update({
+            // Plan size is stored separately from access status.
             subscription_status: subscription.status,
             current_period_end: periodEndUnix
               ? new Date(periodEndUnix * 1000).toISOString()
@@ -145,6 +147,7 @@ export async function POST(req: Request) {
         const { error } = await supabase
           .from('business_profiles')
           .update({
+            // Plan size is stored separately from access status.
             subscription_status: subscription.status,
             current_period_end: periodEndUnix
               ? new Date(periodEndUnix * 1000).toISOString()
